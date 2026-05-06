@@ -1,10 +1,11 @@
 #Step1: Import Database Objects
 
 from database import init_db, Appointment, get_db
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import datetime as dt
+import json
 
 
 #Step3: Create Data Contract Using Pydantic Models
@@ -136,6 +137,142 @@ def list_appointments(date: dt.date, db: Session = Depends(get_db)):
         )
         for appointment in appointments
     ]
+
+# ── VAPI Webhook ─────────────────────────────────────────────────────────────
+# VAPI sends tool calls in its own format — this endpoint handles that
+
+def _do_schedule(args: dict, db: Session) -> str:
+    try:
+        patient_name = args.get("patient_name") or args.get("patientName", "")
+        reason       = args.get("reason", "General consultation")
+        start_time   = args.get("start_time") or args.get("startTime") or args.get("dateTime", "")
+
+        if not patient_name:
+            return "I need the patient's name to schedule an appointment."
+        if not start_time:
+            return "I need the appointment date and time to proceed."
+
+        # Accept ISO strings or natural formats
+        try:
+            parsed_time = dt.datetime.fromisoformat(str(start_time))
+        except ValueError:
+            return f"I couldn't understand the date/time format: {start_time}. Please provide it as YYYY-MM-DDTHH:MM:SS."
+
+        appt = Appointment(patient_name=patient_name, reason=reason, start_time=parsed_time)
+        db.add(appt)
+        db.commit()
+        db.refresh(appt)
+
+        return (
+            f"Done! I've booked an appointment for {appt.patient_name} "
+            f"on {appt.start_time.strftime('%B %d, %Y')} at {appt.start_time.strftime('%I:%M %p')} "
+            f"for {appt.reason}. Appointment ID is {appt.id}."
+        )
+    except Exception as e:
+        return f"There was an error scheduling the appointment: {str(e)}"
+
+
+def _do_cancel(args: dict, db: Session) -> str:
+    try:
+        patient_name = args.get("patient_name") or args.get("patientName", "")
+        date_str     = args.get("datetime") or args.get("date") or args.get("dateTime", "")
+
+        if not patient_name or not date_str:
+            return "I need both the patient name and appointment date to cancel."
+
+        parsed_dt = dt.datetime.fromisoformat(str(date_str))
+        start_dt  = dt.datetime.combine(parsed_dt.date(), dt.time.min)
+        end_dt    = start_dt + dt.timedelta(days=1)
+
+        result = db.execute(
+            select(Appointment).where(
+                Appointment.patient_name == patient_name,
+                Appointment.start_time >= start_dt,
+                Appointment.start_time < end_dt,
+                Appointment.canceled == False
+            )
+        )
+        appointments = result.scalars().all()
+
+        if not appointments:
+            return f"I couldn't find an active appointment for {patient_name} on {parsed_dt.strftime('%B %d, %Y')}."
+
+        for a in appointments:
+            a.canceled = True
+        db.commit()
+
+        return f"Done! I've canceled {len(appointments)} appointment(s) for {patient_name} on {parsed_dt.strftime('%B %d, %Y')}."
+    except Exception as e:
+        return f"There was an error canceling the appointment: {str(e)}"
+
+
+def _do_list(args: dict, db: Session) -> str:
+    try:
+        date_str = args.get("date") or args.get("dateTime") or str(dt.date.today())
+        parsed   = dt.datetime.fromisoformat(str(date_str))
+        start_dt = dt.datetime.combine(parsed.date(), dt.time.min)
+        end_dt   = start_dt + dt.timedelta(days=1)
+
+        result = db.execute(
+            select(Appointment).where(
+                Appointment.canceled == False,
+                Appointment.start_time >= start_dt,
+                Appointment.start_time < end_dt
+            ).order_by(Appointment.start_time.asc())
+        )
+        appointments = result.scalars().all()
+
+        if not appointments:
+            return f"There are no appointments scheduled for {parsed.strftime('%B %d, %Y')}."
+
+        lines = [f"Here are the appointments for {parsed.strftime('%B %d, %Y')}:"]
+        for a in appointments:
+            lines.append(f"- {a.start_time.strftime('%I:%M %p')}: {a.patient_name} — {a.reason}")
+        return " ".join(lines)
+    except Exception as e:
+        return f"There was an error listing appointments: {str(e)}"
+
+
+@app.post("/vapi-webhook/")
+async def vapi_webhook(request: Request, db: Session = Depends(get_db)):
+    body = await request.json()
+
+    message    = body.get("message", {})
+    tool_calls = message.get("toolCalls", [])
+
+    # Also support top-level toolCalls (some VAPI versions)
+    if not tool_calls:
+        tool_calls = body.get("toolCalls", [])
+
+    results = []
+    for call in tool_calls:
+        call_id  = call.get("id", "")
+        function = call.get("function", {})
+        name     = function.get("name", "")
+        raw_args = function.get("arguments", "{}")
+
+        # arguments can be a JSON string or already a dict
+        if isinstance(raw_args, str):
+            try:
+                args = json.loads(raw_args)
+            except json.JSONDecodeError:
+                args = {}
+        else:
+            args = raw_args
+
+        if name in ("scheduleAppointment", "schedule_appointment", "bookAppointment", "book_appointment"):
+            result_text = _do_schedule(args, db)
+        elif name in ("cancelAppointment", "cancel_appointment"):
+            result_text = _do_cancel(args, db)
+        elif name in ("listAppointments", "list_appointments", "getAppointments", "get_appointments"):
+            result_text = _do_list(args, db)
+        else:
+            result_text = f"Unknown tool: {name}"
+
+        results.append({"toolCallId": call_id, "result": result_text})
+
+    return {"results": results}
+
 
 import uvicorn
 if __name__ == "__main__":

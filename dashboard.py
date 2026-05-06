@@ -357,7 +357,7 @@ elif page == "📅  Schedule Appointment":
         col1, col2 = st.columns(2)
         with col1:
             patient_name = st.text_input("Patient Full Name *", placeholder="e.g. John Smith")
-            appt_date = st.date_input("Appointment Date *", min_value=datetime.date.today())
+            appt_date = st.date_input("Appointment Date *", min_value=datetime.date(2020, 1, 1))
         with col2:
             reason = st.text_input("Reason for Visit *", placeholder="e.g. General checkup, Follow-up")
             appt_time = st.time_input(

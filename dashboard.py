@@ -5,7 +5,7 @@ import requests
 import datetime
 import pandas as pd
 
-BASE_URL = "http://127.0.0.1:4444"
+DEFAULT_URL = "http://127.0.0.1:4444"
 
 # ── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -153,9 +153,13 @@ header    { visibility: hidden; }
 
 
 # ── API Helpers ───────────────────────────────────────────────────────────────
+def get_base_url() -> str:
+    return st.session_state.get("base_url", DEFAULT_URL).rstrip("/")
+
+
 def api_schedule(patient_name: str, reason: str, start_time: datetime.datetime):
     try:
-        r = requests.post(f"{BASE_URL}/schedule_appointment/", json={
+        r = requests.post(f"{get_base_url()}/schedule_appointment/", json={
             "patient_name": patient_name,
             "reason": reason,
             "start_time": start_time.isoformat(),
@@ -167,7 +171,7 @@ def api_schedule(patient_name: str, reason: str, start_time: datetime.datetime):
 
 def api_cancel(patient_name: str, appt_datetime: datetime.datetime):
     try:
-        r = requests.post(f"{BASE_URL}/cancel_appointment/", json={
+        r = requests.post(f"{get_base_url()}/cancel_appointment/", json={
             "patient_name": patient_name,
             "datetime": appt_datetime.isoformat(),
         }, timeout=5)
@@ -178,7 +182,7 @@ def api_cancel(patient_name: str, appt_datetime: datetime.datetime):
 
 def api_list(date: datetime.date):
     try:
-        r = requests.get(f"{BASE_URL}/list_appointments/", params={"date": str(date)}, timeout=5)
+        r = requests.get(f"{get_base_url()}/list_appointments/", params={"date": str(date)}, timeout=5)
         return r.json(), r.status_code
     except requests.exceptions.ConnectionError:
         return {"detail": "Cannot connect to backend."}, 503
@@ -186,10 +190,15 @@ def api_list(date: datetime.date):
 
 def server_online() -> bool:
     try:
-        requests.get(BASE_URL, timeout=2, allow_redirects=False)
+        requests.get(get_base_url(), timeout=2, allow_redirects=False)
         return True
     except Exception:
         return False
+
+
+# ── Session state defaults ────────────────────────────────────────────────────
+if "base_url" not in st.session_state:
+    st.session_state["base_url"] = DEFAULT_URL
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -205,6 +214,45 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.divider()
+
+    # ── Backend URL Settings ──
+    with st.expander("⚙️ Backend URL Settings", expanded=False):
+        url_input = st.text_input(
+            "Backend URL",
+            value=st.session_state["base_url"],
+            placeholder="http://127.0.0.1:4444 or https://xxxx.ngrok-free.app",
+            label_visibility="collapsed",
+        )
+        col_save, col_reset = st.columns(2)
+        with col_save:
+            if st.button("✅ Save", use_container_width=True):
+                st.session_state["base_url"] = url_input.rstrip("/")
+                st.success("Saved!")
+        with col_reset:
+            if st.button("↩ Reset", use_container_width=True):
+                st.session_state["base_url"] = DEFAULT_URL
+                st.rerun()
+
+        # Test connection button
+        if st.button("🔌 Test Connection", use_container_width=True):
+            test_url = st.session_state["base_url"]
+            try:
+                r = requests.get(test_url, timeout=3, allow_redirects=False)
+                st.success(f"✅ Connected! Status {r.status_code}")
+            except requests.exceptions.ConnectionError:
+                st.error("❌ Cannot reach the server.")
+            except requests.exceptions.Timeout:
+                st.error("❌ Connection timed out.")
+            except Exception as e:
+                st.error(f"❌ {str(e)[:60]}")
+
+        st.markdown(
+            f"<div style='font-size:0.72rem; color:#94a3b8; margin-top:6px; word-break:break-all;'>"
+            f"Active: {st.session_state['base_url']}</div>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<div style='margin-top:10px'></div>", unsafe_allow_html=True)
 
     online = server_online()
     dot_color = "#22c55e" if online else "#ef4444"

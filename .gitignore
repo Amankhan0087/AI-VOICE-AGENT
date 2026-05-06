@@ -20,3 +20,6 @@ wheels/
 
 # Old files
 backend-py
+
+# IDE
+.vscode/

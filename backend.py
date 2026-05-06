@@ -41,6 +41,13 @@ init_db()
 
 app = FastAPI()
 
+# Bypass ngrok browser warning for all API responses
+@app.middleware("http")
+async def add_ngrok_header(request, call_next):
+    response = await call_next(request)
+    response.headers["ngrok-skip-browser-warning"] = "true"
+    return response
+
 
 # Root — redirect to interactive API docs
 @app.get("/")

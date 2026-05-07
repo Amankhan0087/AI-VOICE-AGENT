@@ -166,11 +166,19 @@ def _do_schedule(args: dict, db: Session) -> str:
         if not start_time:
             return "I need the appointment date and time to proceed."
 
-        # Accept ISO strings or natural formats
+        # Accept ISO strings
         try:
             parsed_time = dt.datetime.fromisoformat(str(start_time))
         except ValueError:
             return f"I couldn't understand the date/time format: {start_time}. Please provide it as YYYY-MM-DDTHH:MM:SS."
+
+        # Sanity check — reject dates more than 2 years in the future or before 2020
+        now = dt.datetime.now()
+        if parsed_time.year < 2020 or parsed_time > now + dt.timedelta(days=730):
+            return (
+                f"The date {parsed_time.strftime('%B %d, %Y')} doesn't look right. "
+                f"Please confirm the correct appointment date and try again."
+            )
 
         appt = Appointment(patient_name=patient_name, reason=reason, start_time=parsed_time)
         db.add(appt)

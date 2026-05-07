@@ -138,6 +138,20 @@ def list_appointments(date: dt.date, db: Session = Depends(get_db)):
         for appointment in appointments
     ]
 
+# ── Request logger middleware (shows all incoming requests in logs) ───────────
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("backend")
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    body = await request.body()
+    if body:
+        logger.info(f"INCOMING {request.method} {request.url.path} — body: {body.decode()[:500]}")
+    response = await call_next(request)
+    return response
+
+
 # ── VAPI Webhook ─────────────────────────────────────────────────────────────
 # VAPI sends tool calls in its own format — this endpoint handles that
 

@@ -255,9 +255,12 @@ def _do_list(args: dict, db: Session) -> str:
         return f"There was an error listing appointments: {str(e)}"
 
 
-@app.post("/vapi-webhook/")
+@app.api_route("/vapi-webhook/", methods=["GET", "POST"])
 async def vapi_webhook(request: Request, db: Session = Depends(get_db)):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
 
     message    = body.get("message", {})
     tool_calls = message.get("toolCalls", [])

@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #0b1220;
+  --surface: #f6f8fa;
+  --surface-2: #eef1f5;
+  --border-subtle: #e4e8ee;
+  --muted: #5b6674;
+
+  --brand-50: #eefcf9;
+  --brand-100: #d4f6ee;
+  --brand-200: #a9ecdd;
+  --brand-300: #74dcc9;
+  --brand-400: #3fc4b0;
+  --brand-500: #17a696;
+  --brand-600: #10847a;
+  --brand-700: #106863;
+  --brand-800: #12524f;
+  --brand-900: #124542;
+
+  --ink-900: #0b1220;
+}
+
+.dark {
+  --background: #060a12;
+  --foreground: #eef2f7;
+  --surface: #0d1420;
+  --surface-2: #121b29;
+  --border-subtle: #1e2938;
+  --muted: #93a0b3;
+
+  --brand-50: #0d2724;
+  --brand-100: #0f302c;
+  --brand-200: #124039;
+  --brand-300: #175a4f;
+  --brand-400: #1c8677;
+  --brand-500: #2bc4ac;
+  --brand-600: #4ed6bf;
+  --brand-700: #7fe3d1;
+  --brand-800: #b3efe4;
+  --brand-900: #dcf9f2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border-subtle: var(--border-subtle);
+  --color-muted: var(--muted);
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  --font-sans: var(--font-inter);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--brand-200);
+  color: var(--brand-900);
+}
+
+.container-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 2rem;
+  }
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 40px 40px;
+}

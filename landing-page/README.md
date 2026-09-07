@@ -12,6 +12,7 @@ appointment system live in the [AI-VOICE-AGENT backend](https://github.com/Amank
 - **Tailwind CSS v4** (CSS-based theme tokens in `app/globals.css`, no `tailwind.config.js`)
 - **Framer Motion** for scroll reveals, hero motion, and hover states
 - **lucide-react** for icons
+- **@vapi-ai/web** for the in-browser "Try it live" voice demo
 
 ## Getting started
 
@@ -39,13 +40,17 @@ app/
   api/leads/route.ts   # demo-request intake endpoint (see BACKEND.md)
 components/
   Navbar.tsx, Hero.tsx, TrustBar.tsx, ProblemSolution.tsx, HowItWorks.tsx,
-  DemoVideo.tsx, Features.tsx, DashboardPreview.tsx, Pricing.tsx,
+  DemoVideo.tsx, LiveDemo.tsx, Features.tsx, DashboardPreview.tsx, Pricing.tsx,
   Testimonials.tsx, FAQ.tsx, ContactForm.tsx, Footer.tsx
-  motion/              # FadeIn / FadeInStagger scroll-reveal helpers, Waveform animation
+  FloatingDemoButton.tsx  # bottom-right floating "Talk to AI" button
+  motion/              # FadeIn / FadeInStagger scroll-reveal helpers, Waveform,
+                        # CallWaveform (live mic/assistant audio level bars)
   ui/                  # Logo, ThemeToggle, social icons
 lib/
   site-config.ts        # ALL editable copy: nav links, stats, pricing tiers, features,
                          # testimonials, FAQs — edit this file to change page content
+  vapi-context.tsx       # VapiCallProvider/useVapiCall — shared call state for
+                         # LiveDemo.tsx and FloatingDemoButton.tsx
   utils.ts
 ```
 
@@ -65,6 +70,34 @@ themselves for day-to-day content changes.
 - **OG/social preview image**: add `public/images/og-cover.png` (1200×630) — referenced
   in `app/layout.tsx` metadata but not included in this repo.
 
+## Live voice demo (VAPI)
+
+The "Try it live" section ([`components/LiveDemo.tsx`](./components/LiveDemo.tsx)) and the
+floating bottom-right button ([`components/FloatingDemoButton.tsx`](./components/FloatingDemoButton.tsx))
+let a visitor have a real voice conversation with your VAPI assistant directly in the
+browser — mic access, no phone call. Both share one call session via
+[`lib/vapi-context.tsx`](./lib/vapi-context.tsx).
+
+**To turn it on**, paste your real values into `.env.local`:
+
+```bash
+NEXT_PUBLIC_VAPI_PUBLIC_KEY=<your VAPI public key>
+NEXT_PUBLIC_VAPI_ASSISTANT_ID=<your VAPI assistant id>
+```
+
+Find both in your [VAPI dashboard](https://dashboard.vapi.ai): the public key under
+**API Keys**, the assistant ID on your assistant's page. The public key is meant to be
+exposed client-side — VAPI's access control lives on the assistant's own configuration,
+not on keeping this key secret.
+
+Until both variables are set, the widget renders a disabled "being configured" state
+instead of a broken button — safe to deploy without them and wire up later. The
+floating button only renders once both are set.
+
+Mic-permission handling is built in: if a visitor denies microphone access (or has none),
+the widget shows a plain-language error state with a retry button instead of failing
+silently.
+
 ## Environment variables
 
 Copy `.env.local.example` to `.env.local`:
@@ -76,6 +109,8 @@ cp .env.local.example .env.local
 | Variable | Purpose |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Base URL of the FastAPI backend, once deployed. Not yet used by any component — see `BACKEND.md`. |
+| `NEXT_PUBLIC_VAPI_PUBLIC_KEY` | VAPI public API key, powers the live voice demo widget. See "Live voice demo" above. |
+| `NEXT_PUBLIC_VAPI_ASSISTANT_ID` | ID of the VAPI assistant the live demo widget calls. |
 
 ## Backend & deployment
 

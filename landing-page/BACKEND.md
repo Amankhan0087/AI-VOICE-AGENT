@@ -23,6 +23,12 @@ appointments. Leads (people who want a demo) are a different concern from appoin
 (people an already-onboarded business's AI agent has booked) — the landing page only
 ever produces leads.
 
+The one other place this frontend reaches an external service is the "Try it live" voice
+demo (`components/LiveDemo.tsx`, `components/FloatingDemoButton.tsx`, `lib/vapi-context.tsx`),
+which connects the visitor's browser directly to VAPI's API via the `@vapi-ai/web` SDK
+and `NEXT_PUBLIC_VAPI_PUBLIC_KEY` / `NEXT_PUBLIC_VAPI_ASSISTANT_ID` — it never touches
+the FastAPI backend either. See the README's "Live voice demo" section for setup.
+
 ## Why they're kept separate
 
 - The FastAPI backend is the **source of truth** for appointments, call transcripts,

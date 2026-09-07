@@ -19,6 +19,7 @@ export const siteConfig = {
 export const navLinks = [
   { label: "Features", href: "#features" },
   { label: "How it Works", href: "#how-it-works" },
+  { label: "Live Demo", href: "#live-demo" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
